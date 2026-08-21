@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# n8n-node-cli local dev state
+~/.n8n-node-cli/
+.n8n-node-cli/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Env / secrets
+.env
+.env.*
+
+# OS
+.DS_Store
+
+# Editors
+# .vscode/launch.json is tracked on purpose (n8n-node-cli scaffold's debug config)
+.idea/
