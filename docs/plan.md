@@ -1,6 +1,6 @@
 # n8n-nodes-docusign-connect — Implementation Plan
 
-Status: not started
+Status: Phase 0 mostly done (repo creation + npm publisher setup pending)
 Last updated: 2026-08-21
 
 Mirrors the [google-maps-platform-node](../../google-maps-platform-node) playbook: scaffold with `n8n-node` CLI, ship a tight MVP, publish under MIT, submit for community verification.
@@ -20,9 +20,10 @@ Differentiation is JWT auth done correctly + tight scope + real documentation, n
 
 ## Phase 0 — Repo, npm, git setup
 
-- [ ] `git init`; create the GitHub repo (`AndrewRatnikov/n8n-nodes-docusign-connect`, matches the local dir name)
-- [ ] Scaffold with `npx @n8n/node-cli new` (same CLI/version family as Maps — currently `@n8n/node-cli@0.45.x`) — generates `package.json`, `tsconfig.json`, `eslint.config.mjs`, `.prettierrc.js`, node/credential skeletons
-- [ ] Reconcile scaffolded `package.json` with the Maps conventions:
+- [x] `git init`
+- [ ] Create the GitHub repo (`AndrewRatnikov/n8n-nodes-docusign-connect`, matches the local dir name) — **needs your GitHub login, not done yet**
+- [x] ~~Scaffold with `npx @n8n/node-cli new`~~ — the CLI's interactive prompt (`@clack/prompts`) doesn't accept piped/non-TTY input, so it couldn't run headless. Built the scaffold by hand instead, matching the CLI's own output conventions from the Maps project (`package.json`, `tsconfig.json`, `eslint.config.mjs`, `.prettierrc.js`, node/credential skeleton) — verified equivalent by running `npm run build` / `npm run lint` clean.
+- [x] Reconciled `package.json` with the Maps conventions:
   - `name`: `n8n-nodes-docusign-connect`
   - `license: MIT`, `publishConfig.access: public`
   - `author`: name + `ratnikov.am@gmail.com`
@@ -30,12 +31,14 @@ Differentiation is JWT auth done correctly + tight scope + real documentation, n
   - `keywords: ["n8n-community-node-package"]`
   - `n8n.n8nNodesApiVersion: 1`, `n8n.strict: true`, `n8n.credentials`/`n8n.nodes` pointing at `dist/`
   - No `dependencies` key — only `devDependencies`/`peerDependencies` (see Phase 3 verification note)
-- [ ] Copy `.gitignore` from Maps (`node_modules/`, `dist/`, `.env*`, `.DS_Store`, `.idea/`, n8n-node-cli local dev state; keep `.vscode/launch.json` tracked)
-- [ ] Copy `LICENSE` (MIT) from Maps, update copyright name/year
-- [ ] Copy `.github/workflows/publish.yml` and `ci.yml` from Maps as-is, update the package name references — this is the GitHub Actions + npm provenance workflow verification will require (see Phase 5)
-- [ ] Set up npm Trusted Publisher for the new package (npmjs.org → package → Publish access → Trusted Publishers → point at `publish.yml`), same as was done for Maps
-- [ ] `npm install`; confirm `npm run build`, `npm run lint`, `npm test` all run clean on the empty scaffold before writing any DocuSign-specific code
-- [ ] First commit + push; confirm `ci.yml` runs green on GitHub Actions
+- [x] Copied `.gitignore` from Maps (`node_modules/`, `dist/`, `.env*`, `.DS_Store`, `.idea/`, n8n-node-cli local dev state; `.vscode/launch.json` tracked)
+- [x] Copied `LICENSE` (MIT) from Maps, updated copyright name/year
+- [x] Copied `.github/workflows/publish.yml` and `ci.yml` from Maps, updated package name references. **Found and fixed a real bug while copying:** the Maps repo's own `ci.yml` and `publish.yml` have their GitHub Actions expressions truncated on disk — `group: ci-$` instead of `group: ci-${{ github.ref }}`, and `NPM_TOKEN: $` instead of `NPM_TOKEN: ${{ secrets.NPM_TOKEN }}`. This repo's copies have the expressions written out in full and verified with `grep`. **The Maps repo should get the same fix** — its concurrency cancellation and npm token secret are currently no-ops.
+- [ ] Set up npm Trusted Publisher for the new package (npmjs.org → package → Publish access → Trusted Publishers → point at `publish.yml`) — **needs your npmjs.com login, not done yet**
+- [x] `npm install`; `npm run build` and `npm run lint` run clean (1 cosmetic icon-theming warning, no errors). `npm test` currently exits non-zero with "no test files found" — expected on an empty scaffold; real tests land in Phase 3 alongside real logic, same as Maps did.
+- [x] Placeholder node (`DocuSign`) and credential (`DocuSignApi`) added so the build has something to compile — minimal shells only, to be replaced with the real JWT auth and 3 operations in Phase 3. Icon is a plain placeholder "DS" square, not real DocuSign branding — needs proper assets before Phase 5.
+- [x] First commits made locally (small, one concern per commit: docs, config, gitignore/license/vscode, node/credential scaffold, CI workflows)
+- [ ] Push to GitHub; confirm `ci.yml` runs green — **blocked on the GitHub repo above**
 
 ## Phase 1 — Setup (~1-2 days, free)
 
