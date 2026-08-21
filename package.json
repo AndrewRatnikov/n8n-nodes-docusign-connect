@@ -1,0 +1,55 @@
+{
+	"name": "n8n-nodes-docusign-connect",
+	"version": "0.1.0",
+	"description": "n8n community node for DocuSign eSignature: create envelopes from templates, check envelope status, and download signed documents.",
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	},
+	"homepage": "https://github.com/AndrewRatnikov/n8n-nodes-docusign-connect#readme",
+	"keywords": [
+		"n8n-community-node-package"
+	],
+	"author": {
+		"name": "Andrew",
+		"email": "ratnikov.am@gmail.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/AndrewRatnikov/n8n-nodes-docusign-connect.git"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"test": "vitest run",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/DocuSignApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/DocuSign/DocuSign.node.js"
+		]
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "*",
+		"eslint": "9.32.0",
+		"prettier": "3.6.2",
+		"release-it": "^19.0.4",
+		"typescript": "5.9.2",
+		"vitest": "^4.1.10"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	}
+}
