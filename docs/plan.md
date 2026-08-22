@@ -64,15 +64,26 @@ Three operations covering the 80% case. Everything else waits for real user dema
 
 ## Phase 3 — Build the node
 
-- [ ] Scaffold with the `n8n-node` CLI (same tool used for Maps)
-- [ ] **Credential type: JWT auth.** This is the differentiator — get it right:
-  - Fields: Integration Key, User ID (impersonated user's GUID), Private Key, environment toggle (demo vs. production base URLs)
-  - RS256-sign the JWT assertion with Node's built-in `crypto` module — do **not** add `jsonwebtoken` or the `docusign-esign` SDK as a dependency (see verification note below)
-  - Cache/refresh the access token (DocuSign JWT tokens last ~1 hour); re-mint on expiry
-  - Credential test action: exchange for a token and hit `/oauth/userinfo`
-- [ ] Call the eSignature REST API directly via `this.helpers.httpRequest` — do not pull in the `docusign-esign` SDK. It's heavy, and every one of its own dependencies has to survive the bundler cleanly to pass verification's "no runtime dependencies" check.
-- [ ] Implement the 3 operations from Phase 2 against the sandbox
-- [ ] Binary output handling for the downloaded PDF (follow n8n's standard binary data conventions, same as any file-returning node)
+- [x] ~~Scaffold with the `n8n-node` CLI~~ — reused the Phase 0 hand-built scaffold (still no working non-interactive path for the CLI's own generator)
+- [x] **Credential type: JWT auth.** [DocuSignApi.credentials.ts](../credentials/DocuSignApi.credentials.ts):
+  - Fields: Environment, Integration Key, User ID, Private Key (PEM, password-masked)
+  - RS256-signs the assertion with Node's built-in `crypto` — no `jsonwebtoken`/`docusign-esign` dependency
+  - `preAuthentication` exchanges the JWT for a token and calls `/oauth/userinfo`; result is cached via a hidden `accessToken` field
+  - Credential test hits `/oauth/userinfo` against a fixed auth-host URL
+- [x] Call the eSignature REST API directly via declarative routing (`this.helpers.httpRequest` under the hood) — no `docusign-esign` SDK
+- [x] Implement the 3 operations from Phase 2 against the sandbox — [resources/envelope/](../nodes/DocuSign/resources/envelope)
+- [x] Binary output handling for the downloaded PDF — `encoding: 'arraybuffer'` + `postReceive: [{ type: 'binaryData', ... }]`
+
+### Two real bugs found while live-testing against the sandbox (not guesses — traced through n8n's own source)
+
+1. **`preAuthentication` was silently never called.** n8n only invokes a credential's `preAuthentication` when the credential declares a hidden property with `type: 'hidden'` and `typeOptions: { expirable: true }` — that field acts as the trigger n8n checks before deciding whether to refresh. Without it (my first version), the method is just dead code — no error, it just never runs. Fixed by adding the `accessToken` hidden/expirable field to `DocuSignApi.credentials.ts`.
+2. **`$credentials.baseUri`/`$credentials.accountId` can't be used in `request.url`/`request.baseURL` expressions.** n8n resolves a request's URL template *before* running `preAuthentication`/`authenticate` — those two only get a chance to add headers, not rewrite the URL, by the time they run (confirmed by reading `n8n-core`'s `httpRequestWithAuthentication` directly). Since DocuSign's API host is account-specific and only discoverable via an authenticated call, this meant `requestDefaults.baseURL` could never resolve correctly. Fixed with a `resolveAccountBaseUrl` preSend ([GenericFunctions.ts](../nodes/DocuSign/GenericFunctions.ts)) on each operation, which calls `httpRequestWithAuthentication` itself to discover the account's `base_uri`/`accountId` and sets `requestOptions.baseURL` directly — reusing the credential's own JWT-signing logic rather than duplicating it.
+
+### Still open: full live-instance verification incomplete
+
+Set up an isolated local n8n dev instance (fresh `--custom-user-folder`, separate from any other project's dev server) and got as far as diagnosing bug #2 above via direct REST calls (`/rest/credentials/test`) and reading n8n's own source + logs. Credential test is still returning a generic 400 on the actual HTTP call whose root cause isn't confirmed yet — was mid-diagnosis (patching n8n's installed package with temporary debug logging, since reverted) when a live-instance restart got blocked by the auto-mode permission classifier. Build and lint are clean and the two fixes above are real, source-verified fixes — but **the 3 operations have not yet been confirmed working end-to-end against the live sandbox.** Resuming this is the immediate next step.
+
+**Incident note:** while debugging, a `pkill -f "n8n-node dev"` broad-pattern kill accidentally stopped the unrelated `google-maps-platform-node` dev server that had been running since the previous session. It was not part of this project's testing — flagged to Andrew, offered to restart it, not yet confirmed done.
 
 ### Verification constraint to design around
 
