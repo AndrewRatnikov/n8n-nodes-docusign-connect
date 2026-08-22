@@ -1,8 +1,6 @@
 import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
+import { envelopeDescription } from './resources/envelope';
 
-// Placeholder scaffold node. Replaced with the real Create Envelope / Get
-// Envelope Status / Download Signed Document operations in Phase 3 — see
-// docs/plan.md.
 export class DocuSign implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'DocuSign',
@@ -21,7 +19,10 @@ export class DocuSign implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'docuSignApi', required: true }],
 		requestDefaults: {
-			baseURL: 'https://api.docusign.net/restapi/v2.1',
+			// baseURL is set per-request by each operation's resolveAccountBaseUrl
+			// preSend (see GenericFunctions.ts) — DocuSign's API host is
+			// account-specific and can only be discovered with an authenticated
+			// call, which happens too late to resolve an expression here.
 			headers: {
 				Accept: 'application/json',
 				'Content-Type': 'application/json',
@@ -36,6 +37,7 @@ export class DocuSign implements INodeType {
 				options: [{ name: 'Envelope', value: 'envelope' }],
 				default: 'envelope',
 			},
+			...envelopeDescription,
 		],
 	};
 }
