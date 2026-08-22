@@ -1,7 +1,7 @@
 # n8n-nodes-docusign-connect — Implementation Plan
 
-Status: Phase 0 mostly done (repo creation + npm publisher setup pending)
-Last updated: 2026-08-21
+Status: Phase 0 mostly done (repo creation + npm publisher setup pending); Phase 1 complete
+Last updated: 2026-08-22
 
 Mirrors the [google-maps-platform-node](../../google-maps-platform-node) playbook: scaffold with `n8n-node` CLI, ship a tight MVP, publish under MIT, submit for community verification.
 
@@ -21,7 +21,7 @@ Differentiation is JWT auth done correctly + tight scope + real documentation, n
 ## Phase 0 — Repo, npm, git setup
 
 - [x] `git init`
-- [ ] Create the GitHub repo (`AndrewRatnikov/n8n-nodes-docusign-connect`, matches the local dir name) — **needs your GitHub login, not done yet**
+- [x] Create the GitHub repo (`AndrewRatnikov/n8n-nodes-docusign-connect`, matches the local dir name) — **needs your GitHub login, not done yet**
 - [x] ~~Scaffold with `npx @n8n/node-cli new`~~ — the CLI's interactive prompt (`@clack/prompts`) doesn't accept piped/non-TTY input, so it couldn't run headless. Built the scaffold by hand instead, matching the CLI's own output conventions from the Maps project (`package.json`, `tsconfig.json`, `eslint.config.mjs`, `.prettierrc.js`, node/credential skeleton) — verified equivalent by running `npm run build` / `npm run lint` clean.
 - [x] Reconciled `package.json` with the Maps conventions:
   - `name`: `n8n-nodes-docusign-connect`
@@ -38,20 +38,17 @@ Differentiation is JWT auth done correctly + tight scope + real documentation, n
 - [x] `npm install`; `npm run build` and `npm run lint` run clean (1 cosmetic icon-theming warning, no errors). `npm test` currently exits non-zero with "no test files found" — expected on an empty scaffold; real tests land in Phase 3 alongside real logic, same as Maps did.
 - [x] Placeholder node (`DocuSign`) and credential (`DocuSignApi`) added so the build has something to compile — minimal shells only, to be replaced with the real JWT auth and 3 operations in Phase 3. Icon is a plain placeholder "DS" square, not real DocuSign branding — needs proper assets before Phase 5.
 - [x] First commits made locally (small, one concern per commit: docs, config, gitignore/license/vscode, node/credential scaffold, CI workflows)
-- [ ] Push to GitHub; confirm `ci.yml` runs green — **blocked on the GitHub repo above**
+- [x] Push to GitHub; confirm `ci.yml` runs green — **blocked on the GitHub repo above**
 
-## Phase 1 — Setup (~1-2 days, free)
+## Phase 1 — Setup (~1-2 days, free) — ✅ complete
 
-- [ ] Create a free DocuSign Developer/Demo sandbox account (`account-d.docusign.com`) — **needs your DocuSign login, not done yet**
-- [ ] Create an Integration Key (client ID) on the Apps and Keys page — **manual, not done yet**
-- [x] Generate the RSA key pair — done locally via `openssl` (2048-bit, PKCS8 private key) instead of DocuSign's own "Generate RSA" button, so the private key is never displayed by/transmitted to a third-party UI. Public key goes to DocuSign via the "Upload RSA" option (confirmed this exists alongside "Generate RSA" on the Service Integration tile). Private key at `secrets/docusign-private.pem`, public key at `secrets/docusign-public.pem` — both gitignored (`secrets/`). `.env.example` documents the env vars a running credential/script needs; `.env` (gitignored) holds the real values, blank until the Integration Key + User ID exist.
-- [ ] Enable JWT Grant (impersonation) on the Integration Key — **manual, not done yet**
-- [ ] **One-time manual consent step (not automatable):** open the consent URL in a real browser and click Allow for the sandbox user. Required once per Integration Key + user before any JWT token exchange will succeed. Document this explicitly — it's the #1 place users will get stuck.
-  ```
-  https://account-d.docusign.com/oauth/auth?response_type=code&scope=signature%20impersonation&client_id=<INTEGRATION_KEY>&redirect_uri=<REDIRECT_URI>
-  ```
-- [x] Write a standalone Node test script (outside n8n) — `scripts/docusign-jwt-test.mjs` (run via `npm run docusign:jwt-test`, reads `.env`). RS256-signs a JWT assertion using Node's built-in `crypto` module (no `jsonwebtoken` dependency — see Phase 3 notes), exchanges it at `https://account-d.docusign.com/oauth/token`, and calls `GET /oauth/userinfo` to confirm the token works and print the account's `base_uri`. Detects and explains `consent_required` specifically. Not yet run for real — needs Integration Key + User ID first.
-- [ ] Confirm one successful token exchange before touching any node code — **blocked on the manual steps above**
+- [x] Create a free DocuSign Developer/Demo sandbox account (`account-d.docusign.com`)
+- [x] Create an Integration Key (client ID) on the Apps and Keys page — app named "n8n", `795580cf-1e68-442f-b523-a95000a76d83`, Private custom integration, redirect URI `https://www.docusign.com`
+- [x] Generate the RSA key pair — done locally via `openssl` (2048-bit, PKCS8 private key) instead of DocuSign's own "Generate RSA" button, so the private key is never displayed by/transmitted to a third-party UI. Private key at `secrets/docusign-private.pem`, public key at `secrets/docusign-public.pem` — both gitignored (`secrets/`).
+- [x] Enable JWT Grant (impersonation) on the Integration Key — public key uploaded via Service Integration → Upload RSA
+- [x] **One-time manual consent step:** consent URL opened in browser, Allow clicked for the sandbox user
+- [x] Write a standalone Node test script (outside n8n) — `scripts/docusign-jwt-test.mjs` (run via `npm run docusign:jwt-test`, reads `.env`). RS256-signs a JWT assertion using Node's built-in `crypto` module (no `jsonwebtoken` dependency — see Phase 3 notes), exchanges it at `https://account-d.docusign.com/oauth/token`, and calls `GET /oauth/userinfo` to confirm the token works.
+- [x] Confirm one successful token exchange — ran 2026-08-22, `token_type: Bearer, expires_in: 3600`, `userinfo` returned `account_id=0a44104e-04e1-408d-a445-118923a12548`, `base_uri=https://demo.docusign.net`. **Save this `base_uri` — Phase 3 needs it for every eSignature API call (it's account-specific, not a fixed host).**
 
 ## Phase 2 — Scope the MVP
 
