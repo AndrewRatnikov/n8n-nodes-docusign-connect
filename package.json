@@ -25,6 +25,7 @@
 		"lint": "n8n-node lint",
 		"lint:fix": "n8n-node lint --fix",
 		"test": "vitest run",
+		"docusign:jwt-test": "node --env-file=.env scripts/docusign-jwt-test.mjs",
 		"release": "n8n-node release",
 		"prepublishOnly": "n8n-node prerelease"
 	},

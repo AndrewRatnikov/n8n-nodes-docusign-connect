@@ -42,19 +42,16 @@ Differentiation is JWT auth done correctly + tight scope + real documentation, n
 
 ## Phase 1 — Setup (~1-2 days, free)
 
-- [ ] Create a free DocuSign Developer/Demo sandbox account (`account-d.docusign.com`)
-- [ ] Create an Integration Key (client ID) on the Apps and Keys page
-- [ ] Generate the RSA key pair under Service Integration; store private key securely (not in git)
-- [ ] Enable JWT Grant (impersonation) on the Integration Key
+- [ ] Create a free DocuSign Developer/Demo sandbox account (`account-d.docusign.com`) — **needs your DocuSign login, not done yet**
+- [ ] Create an Integration Key (client ID) on the Apps and Keys page — **manual, not done yet**
+- [x] Generate the RSA key pair — done locally via `openssl` (2048-bit, PKCS8 private key) instead of DocuSign's own "Generate RSA" button, so the private key is never displayed by/transmitted to a third-party UI. Public key goes to DocuSign via the "Upload RSA" option (confirmed this exists alongside "Generate RSA" on the Service Integration tile). Private key at `secrets/docusign-private.pem`, public key at `secrets/docusign-public.pem` — both gitignored (`secrets/`). `.env.example` documents the env vars a running credential/script needs; `.env` (gitignored) holds the real values, blank until the Integration Key + User ID exist.
+- [ ] Enable JWT Grant (impersonation) on the Integration Key — **manual, not done yet**
 - [ ] **One-time manual consent step (not automatable):** open the consent URL in a real browser and click Allow for the sandbox user. Required once per Integration Key + user before any JWT token exchange will succeed. Document this explicitly — it's the #1 place users will get stuck.
   ```
   https://account-d.docusign.com/oauth/auth?response_type=code&scope=signature%20impersonation&client_id=<INTEGRATION_KEY>&redirect_uri=<REDIRECT_URI>
   ```
-- [ ] Write a standalone Node test script (outside n8n) that:
-  - RS256-signs a JWT assertion using Node's built-in `crypto` module (no `jsonwebtoken` dependency — see Phase 3 notes)
-  - Exchanges it at `https://account-d.docusign.com/oauth/token` for an access token
-  - Calls `GET /oauth/userinfo` to confirm the token works and to discover the account's base URI (needed for all later API calls)
-- [ ] Confirm one successful token exchange before touching any node code
+- [x] Write a standalone Node test script (outside n8n) — `scripts/docusign-jwt-test.mjs` (run via `npm run docusign:jwt-test`, reads `.env`). RS256-signs a JWT assertion using Node's built-in `crypto` module (no `jsonwebtoken` dependency — see Phase 3 notes), exchanges it at `https://account-d.docusign.com/oauth/token`, and calls `GET /oauth/userinfo` to confirm the token works and print the account's `base_uri`. Detects and explains `consent_required` specifically. Not yet run for real — needs Integration Key + User ID first.
+- [ ] Confirm one successful token exchange before touching any node code — **blocked on the manual steps above**
 
 ## Phase 2 — Scope the MVP
 

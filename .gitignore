@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+dist.bak/
 
 # n8n-node-cli local dev state
 ~/.n8n-node-cli/
@@ -17,6 +18,8 @@ yarn-error.log*
 # Env / secrets
 .env
 .env.*
+!.env.example
+secrets/
 
 # OS
 .DS_Store
