@@ -5,7 +5,7 @@ export class DocuSign implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'DocuSign',
 		name: 'docuSign',
-		icon: 'file:docuSign.svg',
+		icon: { light: 'file:docuSign.svg', dark: 'file:docuSign.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

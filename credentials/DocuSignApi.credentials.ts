@@ -28,7 +28,7 @@ export class DocuSignApi implements ICredentialType {
 
 	displayName = 'DocuSign API';
 
-	icon = { light: 'file:docuSign.svg', dark: 'file:docuSign.svg' } as const;
+	icon = { light: 'file:docuSign.svg', dark: 'file:docuSign.dark.svg' } as const;
 
 	documentationUrl = 'https://github.com/AndrewRatnikov/n8n-nodes-docusign-connect#credentials';
 
