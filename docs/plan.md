@@ -1,7 +1,7 @@
 # n8n-nodes-docusign-connect — Implementation Plan
 
-Status: Phase 0 mostly done (repo creation + npm publisher setup pending); Phase 1 complete
-Last updated: 2026-08-22
+Status: Phase 0 mostly done (repo creation + npm publisher setup pending); Phases 1–3 complete
+Last updated: 2026-08-23
 
 Mirrors the [google-maps-platform-node](../../google-maps-platform-node) playbook: scaffold with `n8n-node` CLI, ship a tight MVP, publish under MIT, submit for community verification.
 
@@ -62,7 +62,7 @@ Three operations covering the 80% case. Everything else waits for real user dema
 
 **Explicitly out of scope for v1:** templates management (create/edit templates), bulk send, embedded signing, DocuSign Connect / webhook events. Common asks, real complexity — let users request them.
 
-## Phase 3 — Build the node
+## Phase 3 — Build the node — ✅ complete
 
 - [x] ~~Scaffold with the `n8n-node` CLI~~ — reused the Phase 0 hand-built scaffold (still no working non-interactive path for the CLI's own generator)
 - [x] **Credential type: JWT auth.** [DocuSignApi.credentials.ts](../credentials/DocuSignApi.credentials.ts):
@@ -79,11 +79,19 @@ Three operations covering the 80% case. Everything else waits for real user dema
 1. **`preAuthentication` was silently never called.** n8n only invokes a credential's `preAuthentication` when the credential declares a hidden property with `type: 'hidden'` and `typeOptions: { expirable: true }` — that field acts as the trigger n8n checks before deciding whether to refresh. Without it (my first version), the method is just dead code — no error, it just never runs. Fixed by adding the `accessToken` hidden/expirable field to `DocuSignApi.credentials.ts`.
 2. **`$credentials.baseUri`/`$credentials.accountId` can't be used in `request.url`/`request.baseURL` expressions.** n8n resolves a request's URL template *before* running `preAuthentication`/`authenticate` — those two only get a chance to add headers, not rewrite the URL, by the time they run (confirmed by reading `n8n-core`'s `httpRequestWithAuthentication` directly). Since DocuSign's API host is account-specific and only discoverable via an authenticated call, this meant `requestDefaults.baseURL` could never resolve correctly. Fixed with a `resolveAccountBaseUrl` preSend ([GenericFunctions.ts](../nodes/DocuSign/GenericFunctions.ts)) on each operation, which calls `httpRequestWithAuthentication` itself to discover the account's `base_uri`/`accountId` and sets `requestOptions.baseURL` directly — reusing the credential's own JWT-signing logic rather than duplicating it.
 
-### Still open: full live-instance verification incomplete
+### Live-instance verification — ✅ complete (2026-08-23)
 
-Set up an isolated local n8n dev instance (fresh `--custom-user-folder`, separate from any other project's dev server) and got as far as diagnosing bug #2 above via direct REST calls (`/rest/credentials/test`) and reading n8n's own source + logs. Credential test is still returning a generic 400 on the actual HTTP call whose root cause isn't confirmed yet — was mid-diagnosis (patching n8n's installed package with temporary debug logging, since reverted) when a live-instance restart got blocked by the auto-mode permission classifier. Build and lint are clean and the two fixes above are real, source-verified fixes — but **the 3 operations have not yet been confirmed working end-to-end against the live sandbox.** Resuming this is the immediate next step.
+A third bug surfaced along the way, unrelated to the two above: the first `--custom-user-folder` path Andrew was given (`./.dev-n8n`, nested inside the project) created a **recursive symlink loop** — the custom-node symlink pointed back at the project root, which now contained the very folder holding the symlink, so any tool walking the tree (`ENAMETOOLONG`) never terminated. Nothing DocuSign-specific; fixed by using a folder outside the repo (`~/.n8n-docusign-dev`) instead. The earlier "generic 400 on credential test" thread turned out to be a dead end down the same rabbit hole, not a real bug — never reproduced once testing moved to a real n8n instance.
 
-**Incident note:** while debugging, a `pkill -f "n8n-node dev"` broad-pattern kill accidentally stopped the unrelated `google-maps-platform-node` dev server that had been running since the previous session. It was not part of this project's testing — flagged to Andrew, offered to restart it, not yet confirmed done.
+Andrew then ran all 3 operations by hand against the real sandbox, end to end:
+
+- **Create From Template** — `POST /envelopes` against the throwaway test template → `envelopeId 52672969-dc26-8673-81f7-fe2525841718`, `status: "sent"`
+- **Get Status** — same envelope ID → full envelope object back, `status: "sent"`
+- **Download Document** — same envelope ID, `documentId: combined` → binary output, `application/pdf`, 127 kB
+
+All 3 confirmed working. Phase 3 is done.
+
+**Incident note:** while debugging, a `pkill -f "n8n-node dev"` broad-pattern kill accidentally stopped the unrelated `google-maps-platform-node` dev server that had been running since the previous session. Flagged to Andrew, offered to restart it — not yet confirmed done, worth checking.
 
 ### Verification constraint to design around
 
