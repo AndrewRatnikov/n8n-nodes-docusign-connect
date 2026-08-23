@@ -99,9 +99,34 @@ Checked n8n's current verification guidelines (2026-08-21): verified community n
 
 ## Phase 4 — Validate before publishing
 
-- [ ] Test all 3 operations end-to-end against the sandbox (send-from-template → check status → download)
-- [ ] Test failure paths: expired/invalid consent, declined envelope, wrong account base URI
-- [ ] Optional: subscribe to DocuSign Personal plan for one month, send one real envelope to self, screenshot for the announcement post, then cancel
+- [x] Happy path for all 3 operations (done in Phase 3 — see above)
+
+For each failure test below: run it, and check two things — (1) does the node fail cleanly with a readable message (not a raw stack trace or a silent hang), and (2) is the message something a non-technical n8n user could act on. Reword/fix in code where it isn't.
+
+### A — Auth failures
+- [ ] **Revoked consent.** In DocuSign, go to your account's connected-apps settings and revoke access for the "n8n" app (undoes the one-time consent click from Phase 1). Re-run any operation. Expected: DocuSign returns `consent_required` on the token exchange. **Known gap:** `preAuthentication` currently has no special handling for this — it'll likely surface as a generic HTTP error, not the friendly "click this URL to re-consent" message the standalone script gives. Worth fixing in `DocuSignApi.credentials.ts` if the raw error is unreadable. Redo the consent click afterward to restore access.
+- [ ] **Wrong Integration Key or User ID.** Temporarily edit the credential with an invalid value, run an operation. Expected: clear auth-failure message, not a crash.
+- [ ] **Environment mismatch.** Set Environment to "Production" while using the demo sandbox's Integration Key. Expected: clean failure (DocuSign will reject the key on the production auth host), not a hang or confusing binding-to-wrong-account behavior.
+
+### B — Create Envelope input errors
+- [ ] **Wrong Template ID** (use a random GUID). Expected: DocuSign 404, surfaced with enough detail to know the template wasn't found.
+- [ ] **Role Name that doesn't match the template** (e.g. `Signer2` against a template that only defines `Signer1`). Expected: clear DocuSign validation error, not a silent no-op.
+- [ ] **Empty Recipients.** Leave Recipients blank and execute. Expected: clean validation error rather than a confusing 500.
+
+### C — Get Status / Download Document edge cases
+- [ ] **Non-existent Envelope ID** on both operations. Expected: 404 surfaced clearly, not swallowed.
+- [ ] **Download before completion** — already incidentally covered in Phase 3 (downloaded the `sent`-status envelope's combined PDF successfully), but worth confirming that's expected DocuSign behavior, not a fluke.
+- [ ] **Invalid Document ID** (e.g. `999` on an envelope with only one document). Expected: clean 404.
+
+### D — Envelope lifecycle states
+- [ ] **Void an envelope** (via DocuSign's web UI, using the test envelope from Phase 3 or a new one) and confirm **Get Status** correctly reports `voided`.
+- [ ] **Decline an envelope** — open the signing link as the test recipient and click Decline — confirm **Get Status** reports `declined`.
+
+### E — Error message quality pass
+- [ ] After running A–D, review every error message that came back. n8n's default declarative-routing error handling may just dump DocuSign's raw JSON body — decide whether that's good enough or whether a `postReceive` error handler is worth adding to extract DocuSign's `errorCode`/`message` fields into something cleaner. This is the kind of polish the differentiation pitch (README) is resting on.
+
+### F — Optional real-world validation
+- [ ] Subscribe to DocuSign Personal plan for one month, send one real envelope to self, screenshot for the announcement post, then cancel
 
 ## Phase 5 — Ship
 
