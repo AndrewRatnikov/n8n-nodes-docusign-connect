@@ -8,6 +8,10 @@ dist.bak/
 # n8n-node-cli local dev state
 ~/.n8n-node-cli/
 .n8n-node-cli/
+# Never use a --custom-user-folder path inside this repo — its symlink loops
+# back on itself (ENAMETOOLONG). Always point --custom-user-folder outside
+# the repo, e.g. ~/.n8n-docusign-dev.
+.dev-n8n/
 
 # Logs
 npm-debug.log*
