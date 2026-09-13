@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-docusign-connect",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "n8n community node for DocuSign eSignature: create envelopes from templates, check envelope status, and download signed documents.",
 	"license": "MIT",
 	"publishConfig": {
