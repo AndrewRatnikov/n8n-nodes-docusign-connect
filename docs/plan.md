@@ -1,7 +1,7 @@
 # n8n-nodes-docusign-connect — Implementation Plan
 
-Status: Phase 0 mostly done (repo creation + npm publisher setup pending); Phases 1–3 complete
-Last updated: 2026-08-23
+Status: Phase 0 mostly done (repo creation + npm publisher setup pending); Phases 1–3 complete; Phase 4 failure-path testing is the open work
+Last updated: 2026-09-05
 
 Mirrors the [google-maps-platform-node](../../google-maps-platform-node) playbook: scaffold with `n8n-node` CLI, ship a tight MVP, publish under MIT, submit for community verification.
 
@@ -104,6 +104,7 @@ Checked n8n's current verification guidelines (2026-08-21): verified community n
 For each failure test below: run it, and check two things — (1) does the node fail cleanly with a readable message (not a raw stack trace or a silent hang), and (2) is the message something a non-technical n8n user could act on. Reword/fix in code where it isn't.
 
 ### A — Auth failures
+- [x] ~~**Known gap:** no `consent_required` handling~~ — fixed 2026-09-05: `preAuthentication` now catches it and throws a message containing the ready-to-open consent URL (rethrowing any other error untouched). **Still needs the live test below to confirm the detection actually matches n8n's error shape.**
 - [ ] **Revoked consent.** In DocuSign, go to your account's connected-apps settings and revoke access for the "n8n" app (undoes the one-time consent click from Phase 1). Re-run any operation. Expected: DocuSign returns `consent_required` on the token exchange. **Known gap:** `preAuthentication` currently has no special handling for this — it'll likely surface as a generic HTTP error, not the friendly "click this URL to re-consent" message the standalone script gives. Worth fixing in `DocuSignApi.credentials.ts` if the raw error is unreadable. Redo the consent click afterward to restore access.
 - [ ] **Wrong Integration Key or User ID.** Temporarily edit the credential with an invalid value, run an operation. Expected: clear auth-failure message, not a crash.
 - [ ] **Environment mismatch.** Set Environment to "Production" while using the demo sandbox's Integration Key. Expected: clean failure (DocuSign will reject the key on the production auth host), not a hang or confusing binding-to-wrong-account behavior.
@@ -132,7 +133,7 @@ For each failure test below: run it, and check two things — (1) does the node 
 
 - [ ] Publish to npm with the `n8n-nodes-` prefix, MIT license
 - [ ] **Reuse, don't rebuild:** copy the Maps project's `.github/workflows/publish.yml` + `ci.yml`. As of May 1 2026, n8n requires verified-node submissions to publish via GitHub Actions with npm provenance — the Maps repo already has a working implementation of this (OIDC-based npm provenance, `id-token: write` scoped down). This wasn't in the original plan and is now mandatory, not optional.
-- [ ] README with clear setup instructions — this is the #1 differentiator given how much friction JWT setup has (Integration Key creation, RSA key generation, the one-time consent URL visit). Screenshot each DocuSign dashboard step.
+- [x] README with clear setup instructions — this is the #1 differentiator given how much friction JWT setup has (Integration Key creation, RSA key generation, the one-time consent URL visit). Written 2026-09-05: [README.md](../README.md) walks through all four setup steps including the consent URL. **Still missing screenshots of each DocuSign dashboard step** — those need a live browser session and are the remaining gap before submission.
 - [ ] Submit for n8n community node verification (`npx @n8n/scan-community-package` must pass first)
 - [ ] Post replies to the DocuSign threads already found (2021 request, November 2025 "we need this" post) — and acknowledge the existing early-stage community nodes rather than ignoring them
 - [ ] Update portfolio + one announcement post

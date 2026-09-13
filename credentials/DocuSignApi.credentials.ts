@@ -107,15 +107,34 @@ export class DocuSignApi implements ICredentialType {
 		signer.end();
 		const assertion = `${signingInput}.${base64url(signer.sign(credentials.privateKey as string))}`;
 
-		const tokenResponse = (await this.helpers.httpRequest({
-			method: 'POST',
-			url: `https://${authHost}/oauth/token`,
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: new URLSearchParams({
-				grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-				assertion,
-			}).toString(),
-		})) as { access_token: string };
+		let tokenResponse: { access_token: string };
+		try {
+			tokenResponse = (await this.helpers.httpRequest({
+				method: 'POST',
+				url: `https://${authHost}/oauth/token`,
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: new URLSearchParams({
+					grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+					assertion,
+				}).toString(),
+			})) as { access_token: string };
+		} catch (error) {
+			// JWT Grant fails with `consent_required` until the impersonated user
+			// has granted consent once, in a real browser — the single most common
+			// setup failure, and unrecoverable from inside n8n. n8n's httpRequest
+			// wraps the upstream body differently depending on the transport, so
+			// match on the serialised error and rethrow untouched when it isn't
+			// this case, rather than swallowing a genuine error behind a guess.
+			if (JSON.stringify(error).includes('consent_required')) {
+				throw new Error(
+					'DocuSign requires a one-time consent grant for this User ID before JWT auth works. ' +
+						'Open this URL in a browser, sign in as the impersonated user, and click Allow, then save the credential again: ' +
+						`https://${authHost}/oauth/auth?response_type=code&scope=signature%20impersonation&client_id=${credentials.integrationKey}&redirect_uri=https://www.docusign.com ` +
+						'(replace redirect_uri with whichever redirect URI is registered on your Integration Key).',
+				);
+			}
+			throw error;
+		}
 
 		// The API host is per-account, not a fixed DocuSign domain — discover it
 		// from userinfo rather than hardcoding api.docusign.net.
@@ -125,9 +144,12 @@ export class DocuSignApi implements ICredentialType {
 			headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
 		})) as { accounts: DocuSignAccount[] };
 
-		const account = userInfo.accounts.find((a) => a.is_default) ?? userInfo.accounts[0];
+		const account = userInfo.accounts?.find((a) => a.is_default) ?? userInfo.accounts?.[0];
 		if (!account) {
-			throw new Error('DocuSign userinfo returned no accounts for this User ID.');
+			throw new Error(
+				'DocuSign returned no accounts for this User ID. Check that the User ID is the impersonated ' +
+					"user's GUID (not their email) and that it belongs to the selected Environment.",
+			);
 		}
 
 		return {

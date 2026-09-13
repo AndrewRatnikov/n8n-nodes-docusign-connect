@@ -1,4 +1,5 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 interface DocuSignAccount {
 	account_id: string;
@@ -9,6 +10,12 @@ interface DocuSignAccount {
 interface DocuSignUserInfo {
 	accounts: DocuSignAccount[];
 }
+
+// The eSignature API reports failures with real HTTP status codes (401 on a
+// dead token, 404 on an unknown envelope, 400 with an `errorCode`/`message`
+// body on a validation error), so n8n's declarative routing raises a
+// NodeApiError on its own — no postReceive error handler is needed here, the
+// way Google's HTTP-200-with-error-in-body APIs required one in the Maps node.
 
 /**
  * n8n resolves a request's `baseURL`/`url` expressions before running the
@@ -33,9 +40,16 @@ export async function resolveAccountBaseUrl(
 		url: `https://${authHost}/oauth/userinfo`,
 	})) as DocuSignUserInfo;
 
-	const account = userInfo.accounts.find((a) => a.is_default) ?? userInfo.accounts[0];
+	const account = userInfo.accounts?.find((a) => a.is_default) ?? userInfo.accounts?.[0];
 	if (!account) {
-		throw new Error('DocuSign userinfo returned no accounts for this User ID.');
+		throw new NodeOperationError(
+			this.getNode(),
+			'DocuSign returned no accounts for this User ID.',
+			{
+				description:
+					'Check that the User ID in the credential is the GUID of a user on the account you expect, and that it matches the selected Environment (Demo/Sandbox vs Production).',
+			},
+		);
 	}
 
 	requestOptions.baseURL = `${account.base_uri}/restapi/v2.1/accounts/${account.account_id}`;
